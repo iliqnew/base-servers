@@ -1,7 +1,7 @@
 import socket
 import pickle
 import threading
-from typing import Literal
+from typing import Literal, Tuple
 
 from base import BaseServer
 
@@ -11,43 +11,46 @@ class InvalidIPv4Address(Exception):
         __args = args if args else (f"'{ip}' is an invalid IP version 4 address",)
         super().__init__(*__args)
 
+class Gameplay:
+    def start(self):
+        ...
+
+class EventHandler:
+    def __init__(self, gameplay: Gameplay, server: BaseServer) -> None:
+        self.gameplay = gameplay
+        self.server = server
+    
+    def handle(self):
+        ...
 
 class BaseTCPServer(BaseServer):
+    addr: Tuple[str, int] = ("localhost", 5000)
+    buffer: int = 1024
+    ipv: Literal[4, 6] = 4
+    max_connections: int = 1
+    gameplay: Gameplay = Gameplay()
+    event_handler: EventHandler = EventHandler()
+
     clients = []
 
-    def __init__(
-            self,
-            ip_addr: str = "localhost",
-            port: int = 5000,
-            buffer: int = 1024,
-            ipv: Literal[4, 6] = 4,
-            max_connections: int = 1
-    ) -> None:
-        self.__addr = (ip_addr, port)
-        self.__buffer = buffer
-        self.__address_family = self.set_address_family(ipv)
-        self.__socket = socket.socket(self.__address_family, socket.SOCK_STREAM)
-        self.__max_connections = max_connections
-
-        self.__setup()
-        self.__run()
+    def __init__(self) -> None:
+        self.__address_family = self.set_address_family(self.ipv)
+        self.__socket = socket.socket(self.__address_family, socket.SOCK_STREAM) 
+        self.__socket.bind(self.addr)
     
-    def __setup(self):
-        self.__socket.bind(self.__addr)
-    
-    def __run(self):
+    def run(self):
         self.__listen()
-        self.__accept()
+        threading.Thread(target=self.gameplay.start).start()
 
     def __listen(self):
-        self.__socket.listen(self.__max_connections)
+        self.__socket.listen(self.max_connections)
         threading.Thread(target=self.__accept).start()
     
     def __accept(self):
         while True:
             conn, addr = self.__socket.accept()
             print(f"Connection from '{addr}'")
-            encoded_client = conn.recv(self.__buffer)
+            encoded_client = conn.recv(self.buffer)
             if not encoded_client:
                 continue
             print(f"Received: {encoded_client}")
@@ -66,3 +69,4 @@ class BaseTCPServer(BaseServer):
 
 if __name__=="__main__":
     server = BaseTCPServer()
+    server.run()
