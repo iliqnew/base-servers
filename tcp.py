@@ -29,7 +29,7 @@ class BaseTCPServer(BaseServer):
     ipv: Literal[4, 6] = 4
     max_connections: int = 1
     gameplay: Gameplay = Gameplay()
-    event_handler: EventHandler = EventHandler()
+    # event_handler: EventHandler = EventHandler()
 
     clients = []
 
